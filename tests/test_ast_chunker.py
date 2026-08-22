@@ -8,8 +8,8 @@ from ast_chunker import ASTChunker
 
 def test_ast_chunking():
     # 1. Create a sample Python file
-    python_fixture_path = "sample_fixture.py"
-    java_fixture_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Ingestion', 'UserService.java'))
+    python_fixture_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fixtures', 'sample_fixture.py'))
+    java_fixture_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'fixtures', 'UserService.java'))
     
     python_code = """
 def standalone_function():

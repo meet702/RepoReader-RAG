@@ -1,90 +1,43 @@
 import os
-import shutil
-import tempfile
+import git
+from git.exc import GitCommandError
 
-from git import Repo
+def clone_repo(repo_url: str, dest_dir: str = "cloned_repos") -> str:
+    """
+    Clones a public GitHub repository or pulls the latest changes if it already exists.
+    Returns the local path to the repository.
+    """
+    if not repo_url.startswith("http"):
+        raise ValueError(f"Invalid repository URL: {repo_url}")
 
+    # Extract repo name from URL (e.g., 'myrepo' from '.../user/myrepo' or '.../myrepo.git')
+    repo_name = repo_url.rstrip("/").split("/")[-1]
+    if repo_name.endswith(".git"):
+        repo_name = repo_name[:-4]
 
-class GitHubLoader:
+    repo_path = os.path.join(dest_dir, repo_name)
 
-    def __init__(self, repo_url: str):
-        self.repo_url = repo_url
+    os.makedirs(dest_dir, exist_ok=True)
 
-    def clone_repository(self):
-        """
-        Clone a GitHub repository into a temporary directory.
-        """
-
-        temp_dir = tempfile.mkdtemp(prefix="github_repo_")
-
-        print(f"Cloning repository...")
-        print(f"Repository: {self.repo_url}")
-
+    if os.path.exists(repo_path) and os.path.isdir(os.path.join(repo_path, ".git")):
+        print(f"Repository already exists at {repo_path}. Pulling latest changes...")
         try:
-            Repo.clone_from(
-                self.repo_url,
-                temp_dir,
-                depth=1
-            )
-
-            print(f"Repository cloned successfully.")
-            print(f"Location: {temp_dir}")
-
-            return temp_dir
-
+            repo = git.Repo(repo_path)
+            origin = repo.remotes.origin
+            origin.pull()
+            print("Successfully pulled latest changes.")
+            return os.path.abspath(repo_path)
+        except GitCommandError as e:
+            raise RuntimeError(f"Failed to pull repository at {repo_path}. Git error: {e}")
         except Exception as e:
-            shutil.rmtree(temp_dir, ignore_errors=True)
-            raise RuntimeError(
-                f"Failed to clone repository: {e}"
-            )
-
-    def get_repository_files(self, repo_path: str):
-        """
-        Return all files from the repository.
-        """
-
-        files = []
-
-        ignored_directories = {
-            ".git",
-            "node_modules",
-            "__pycache__",
-            ".venv",
-            "venv",
-            "env",
-            "target",
-            "build",
-            "dist",
-            ".idea",
-            ".vscode"
-        }
-
-        for root, dirs, filenames in os.walk(repo_path):
-
-            # Prevent traversal into ignored directories
-            dirs[:] = [
-                d for d in dirs
-                if d not in ignored_directories
-            ]
-
-            for filename in filenames:
-
-                file_path = os.path.join(
-                    root,
-                    filename
-                )
-
-                files.append(file_path)
-
-        return files
-
-    def cleanup(self, repo_path: str):
-        """
-        Remove cloned repository after processing.
-        """
-
-        if os.path.exists(repo_path):
-            shutil.rmtree(
-                repo_path,
-                ignore_errors=True
-            )
+            raise RuntimeError(f"Unexpected error while updating repository {repo_path}: {e}")
+    else:
+        print(f"Cloning repository {repo_url} into {repo_path}...")
+        try:
+            git.Repo.clone_from(repo_url, repo_path)
+            print("Successfully cloned repository.")
+            return os.path.abspath(repo_path)
+        except GitCommandError as e:
+            raise RuntimeError(f"Failed to clone repository from {repo_url}. Ensure the URL is correct and public. Git error: {e}")
+        except Exception as e:
+            raise RuntimeError(f"Unexpected error while cloning {repo_url}: {e}")

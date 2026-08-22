@@ -1,0 +1,6 @@
+gitpython
+javalang
+langchain-core
+langchain-ollama
+langchain-chroma
+python-dotenv

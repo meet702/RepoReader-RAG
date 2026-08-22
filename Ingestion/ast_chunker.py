@@ -53,7 +53,7 @@ class ASTChunker:
         relative_path = os.path.relpath(
             file_path,
             repo_path
-        )
+        ).replace("\\", "/")
 
         chunks = []
         lines = content.splitlines()
@@ -193,7 +193,7 @@ class ASTChunker:
             print(f"Error Message: {e}")
             return []
 
-        relative_path = os.path.relpath(file_path, repo_path)
+        relative_path = os.path.relpath(file_path, repo_path).replace("\\", "/")
         lines = content.splitlines()
         chunks = []
 
@@ -311,7 +311,7 @@ class ASTChunker:
         relative_path = os.path.relpath(
             file_path,
             repo_path
-        )
+        ).replace("\\", "/")
 
         # For the first version we keep these files
         # as a single logical document.
