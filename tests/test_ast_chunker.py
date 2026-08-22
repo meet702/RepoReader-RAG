@@ -57,6 +57,22 @@ class MyTestClass(BaseClass):
     else:
         print(f"Could not find Java fixture at {java_fixture_path}")
         
+    # 4. Test Markdown file (README.md)
+    print("\n" + "="*60)
+    print("Testing Markdown Chunker (README.md)")
+    print("="*60)
+    readme_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'cloned_repos', 'sampleproject', 'README.md'))
+    if os.path.exists(readme_path):
+        readme_chunks = chunker.chunk_file(readme_path, repo_path)
+        print(f"Produced {len(readme_chunks)} chunks for README.md:")
+        for i, chunk in enumerate(readme_chunks):
+            print(f"\n--- Chunk {i+1} ---")
+            print("Metadata:", chunk.metadata)
+            print("Content Length:", len(chunk.page_content))
+            print("Content Preview:\n" + chunk.page_content[:200].replace('\n', ' ') + ("..." if len(chunk.page_content) > 200 else ""))
+    else:
+        print(f"Could not find README.md at {readme_path}")
+        
     # Cleanup
     if os.path.exists(python_fixture_path):
         os.remove(python_fixture_path)

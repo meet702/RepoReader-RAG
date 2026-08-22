@@ -4,3 +4,6 @@ langchain-core
 langchain-ollama
 langchain-chroma
 python-dotenv
+rank_bm25
+langchain-community
+sentence-transformers

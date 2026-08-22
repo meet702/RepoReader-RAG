@@ -300,31 +300,103 @@ class ASTChunker:
     # Text / Markdown / Config
     # ---------------------------------------------------------
 
+    def _split_by_paragraphs(self, content: str):
+        import re
+        paragraphs = re.split(r'\n\s*\n', content)
+        paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        
+        merged = []
+        current_chunk = ""
+        
+        for p in paragraphs:
+            if not current_chunk:
+                current_chunk = p
+            elif len(current_chunk) + len(p) < 800:
+                current_chunk += "\n\n" + p
+            else:
+                merged.append(current_chunk)
+                current_chunk = p
+                
+        if current_chunk:
+            merged.append(current_chunk)
+            
+        return merged
+
+    def _split_by_markdown_headers(self, content: str):
+        import re
+        lines = content.splitlines()
+        sections = []
+        current_title = ""
+        current_content = []
+
+        for line in lines:
+            if re.match(r'^#{1,6}\s', line):
+                if current_content:
+                    sections.append((current_title, "\n".join(current_content)))
+                current_title = line.strip().lstrip('#').strip()
+                current_content = [line]
+            else:
+                current_content.append(line)
+                
+        if current_content or current_title:
+            sections.append((current_title, "\n".join(current_content)))
+
+        return sections
+
     def _chunk_text(
         self,
         file_path,
         repo_path
     ):
-
         content = self._read_file(file_path)
-
         relative_path = os.path.relpath(
             file_path,
             repo_path
         ).replace("\\", "/")
+        extension = os.path.splitext(file_path)[1].lower()
 
-        # For the first version we keep these files
-        # as a single logical document.
-        return [
-            Document(
-                page_content=content,
-                metadata={
-                    "file": relative_path,
-                    "language": "text",
-                    "chunk_type": "document"
-                }
-            )
-        ]
+        # Config files: return as whole file
+        if extension in ['.json', '.xml', '.yaml', '.yml']:
+            return [
+                Document(
+                    page_content=content,
+                    metadata={
+                        "file": relative_path,
+                        "language": "text",
+                        "chunk_type": "document"
+                    }
+                )
+            ]
+
+        chunks = []
+        is_markdown = extension == '.md'
+
+        if is_markdown:
+            sections = self._split_by_markdown_headers(content)
+            for section_title, section_content in sections:
+                sub_chunks = self._split_by_paragraphs(section_content)
+                for sub_chunk in sub_chunks:
+                    meta = {
+                        "file": relative_path,
+                        "language": "text",
+                        "chunk_type": "document"
+                    }
+                    if section_title:
+                        meta["section"] = section_title
+                    chunks.append(Document(page_content=sub_chunk, metadata=meta))
+        else:
+            sub_chunks = self._split_by_paragraphs(content)
+            for sub_chunk in sub_chunks:
+                chunks.append(Document(
+                    page_content=sub_chunk,
+                    metadata={
+                        "file": relative_path,
+                        "language": "text",
+                        "chunk_type": "document"
+                    }
+                ))
+
+        return chunks
 
     # ---------------------------------------------------------
     # Helpers
