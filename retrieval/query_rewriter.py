@@ -5,7 +5,7 @@ def rewrite_query(user_question: str, chat_history: list) -> str:
     if not chat_history:
         return user_question
         
-    llm = ChatOllama(model="llama3.2")
+    llm = ChatOllama(model="qwen2.5-coder:7b")
     
     messages = [
         SystemMessage(content="Given the chat history, rewrite the new question to be standalone and searchable. Just return the rewritten question."),

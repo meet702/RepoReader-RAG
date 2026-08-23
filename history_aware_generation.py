@@ -12,7 +12,7 @@ embeddings = OllamaEmbeddings(model="nomic-embed-text")
 db = Chroma(persist_directory=persistent_directory, embedding_function=embeddings)
 
 # Set up AI model
-llm = ChatOllama(model="llama3.2")
+llm = ChatOllama(model="qwen2.5-coder:7b")
 
 # Store our conversation as messages
 chat_history = []

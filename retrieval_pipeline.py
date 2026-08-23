@@ -48,7 +48,7 @@ Documents:
 Please provide a clear, helpful answer using only the information from these documents. If you can't find the answer in the documents, say "I don't have enough information to answer that question based on the provided documents"
 """
 
-llm = ChatOllama(model="llama3.2")
+llm = ChatOllama(model="qwen2.5-coder:7b")
 
 messages = [
     SystemMessage(content="You are a helpful assistant"),

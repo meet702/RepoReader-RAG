@@ -29,7 +29,7 @@ for doc_content, metadata in zip(collection_data['documents'], collection_data['
 
 print(f"Loaded {len(all_chunks)} chunks.\n")
 
-llm = ChatOllama(model="llama3.2")
+llm = ChatOllama(model="qwen2.5-coder:7b")
 chat_history = []
 
 

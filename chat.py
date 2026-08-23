@@ -36,7 +36,7 @@ def start_chat():
         
     print(f"Loaded {len(all_chunks)} chunks successfully.")
     
-    llm = ChatOllama(model="llama3.2")
+    llm = ChatOllama(model="qwen2.5-coder:7b")
     chat_history = []
     
     print("\nAsk me questions about the codebase! Type 'quit' to exit.")
