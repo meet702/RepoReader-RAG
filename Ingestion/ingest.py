@@ -7,7 +7,12 @@ load_dotenv()
 
 from github_loader import clone_repo
 from file_filter import get_parseable_files
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from ast_chunker import ASTChunker
+from code_graph.graph_builder import build_graph
+from code_graph.graph_store import save_graph
 
 from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
@@ -98,6 +103,18 @@ def main(repo_url: str):
         print(f"Verification successful: {count} chunks currently stored in ChromaDB for '{repo_name}'.")
     except Exception as e:
         print(f"Could not verify count: {e}")
+        
+    print("\n--- 7. Building Code Relationship Graph ---")
+    graph_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph'))
+    os.makedirs(graph_dir, exist_ok=True)
+    graph_path = os.path.join(graph_dir, f"{repo_name}.pkl")
+    
+    print("Parsing files to build graph...")
+    graph = build_graph(repo_path, files)
+    print(f"Graph built with {graph.number_of_nodes()} nodes and {graph.number_of_edges()} edges.")
+    
+    save_graph(graph, graph_path)
+    print(f"Graph saved to {graph_path}")
         
     print("\n=== Ingestion Complete ===")
 

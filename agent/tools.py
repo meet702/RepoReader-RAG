@@ -8,12 +8,19 @@ from langchain_core.tools import tool
 # These are set once at startup via init_tools() before the agent runs.
 _persist_directory: str = ""
 _all_chunks: list = []
+_graph_path: str = ""
+_graph = None
 
-def init_tools(persist_directory: str, all_chunks: list):
+def init_tools(persist_directory: str, all_chunks: list, graph_path: str = ""):
     """Call this once at startup to configure the tools with runtime state."""
-    global _persist_directory, _all_chunks
+    global _persist_directory, _all_chunks, _graph_path, _graph
     _persist_directory = persist_directory
     _all_chunks = all_chunks
+    _graph_path = graph_path
+    
+    if _graph_path and os.path.exists(_graph_path):
+        from code_graph.graph_store import load_graph
+        _graph = load_graph(_graph_path)
 
 
 @tool
@@ -60,5 +67,30 @@ def github_search_tool(query: str) -> str:
 def graph_search_tool(query: str) -> str:
     """Search the code relationship graph to find callers, callees, dependencies,
     and structural relationships between code elements. Use this for questions
-    like 'what calls X', 'what does Y depend on', or 'what imports Z'."""
-    return "Code relationship graph is not yet implemented."
+    like 'what calls X', 'what does Y depend on', or 'what imports Z'.
+    NOTE: Provide the actual function name 'X' you want to lookup in the query."""
+    
+    if not _graph:
+        return "Error: graph not initialized or not found."
+        
+    from code_graph.graph_store import get_callers, get_callees
+    
+    # Extract likely function name from query (simple heuristic)
+    # E.g. "what calls build_and_check_dists" -> "build_and_check_dists"
+    words = query.replace("'", "").replace('"', "").replace("`", "").split()
+    # Assume the longest word without spaces is the function name (rough heuristic)
+    target = sorted(words, key=len, reverse=True)[0]
+    
+    callers = get_callers(_graph, target)
+    callees = get_callees(_graph, target)
+    
+    result = []
+    if callers:
+        result.append(f"Found {len(callers)} caller(s) for '{target}':\n" + "\n".join(f"- {c}" for c in callers))
+    if callees:
+        result.append(f"Found {len(callees)} callee(s) that '{target}' calls:\n" + "\n".join(f"- {c}" for c in callees))
+        
+    if not result:
+        return f"No structural relationships or callers found for '{target}'."
+        
+    return "\n\n".join(result)

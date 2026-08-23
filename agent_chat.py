@@ -36,7 +36,8 @@ def start_chat():
     print(f"Loaded {len(all_chunks)} chunks.")
 
     # Wire the tools with the loaded data
-    init_tools(persist_directory, all_chunks)
+    graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'db', 'code_graph', f"{repo_name}.pkl"))
+    init_tools(persist_directory, all_chunks, graph_path)
 
     # Build the LangGraph ReAct agent
     agent = build_agent()

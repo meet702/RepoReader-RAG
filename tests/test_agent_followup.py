@@ -31,7 +31,8 @@ def setup():
         for content, meta in zip(collection_data['documents'], collection_data['metadatas'])
     ]
     print(f"Loaded {len(all_chunks)} chunks.\n")
-    init_tools(persist_directory, all_chunks)
+    graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph', f"{repo_name}.pkl"))
+    init_tools(persist_directory, all_chunks, graph_path)
     return build_agent()
 
 
@@ -65,5 +66,5 @@ def run_question(agent, question):
 if __name__ == "__main__":
     agent = setup()
 
-    print("--- Q1: what encoding should the readme file use ---")
-    run_question(agent, "what encoding should the readme file use")
+    print("--- Testing Graph Search ---")
+    run_question(agent, "what calls build_and_check_dists")

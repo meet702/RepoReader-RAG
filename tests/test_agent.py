@@ -33,7 +33,8 @@ def setup():
         all_chunks.append(Document(page_content=doc_content, metadata=metadata))
 
     print(f"Loaded {len(all_chunks)} chunks.\n")
-    init_tools(persist_directory, all_chunks)
+    graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph', f"{repo_name}.pkl"))
+    init_tools(persist_directory, all_chunks, graph_path)
     return build_agent()
 
 
