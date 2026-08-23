@@ -8,7 +8,6 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
 
-from agent.tools import init_tools
 from agent.graph import build_agent
 
 def start_chat():
@@ -35,12 +34,17 @@ def start_chat():
 
     print(f"Loaded {len(all_chunks)} chunks.")
 
+    from agent.tools import build_tools
+    from code_graph.graph_store import load_graph
+    
     # Wire the tools with the loaded data
     graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), 'db', 'code_graph', f"{repo_name}.pkl"))
-    init_tools(persist_directory, all_chunks, graph_path)
+    graph = load_graph(graph_path) if os.path.exists(graph_path) else None
+    
+    tools = build_tools(persist_directory, all_chunks, graph)
 
     # Build the LangGraph ReAct agent
-    agent = build_agent()
+    agent = build_agent(tools)
 
     chat_history = []
 

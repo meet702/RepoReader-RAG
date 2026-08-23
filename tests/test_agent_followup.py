@@ -10,7 +10,6 @@ from langchain_ollama import OllamaEmbeddings
 from langchain_core.messages import HumanMessage
 from langchain_core.documents import Document
 
-from agent.tools import init_tools
 from agent.graph import build_agent
 
 
@@ -31,9 +30,14 @@ def setup():
         for content, meta in zip(collection_data['documents'], collection_data['metadatas'])
     ]
     print(f"Loaded {len(all_chunks)} chunks.\n")
+    from agent.tools import build_tools
+    from code_graph.graph_store import load_graph
+    
     graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph', f"{repo_name}.pkl"))
-    init_tools(persist_directory, all_chunks, graph_path)
-    return build_agent()
+    graph = load_graph(graph_path) if os.path.exists(graph_path) else None
+    
+    tools = build_tools(persist_directory, all_chunks, graph)
+    return build_agent(tools)
 
 
 def run_question(agent, question):

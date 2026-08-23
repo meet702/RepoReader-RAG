@@ -1,96 +1,85 @@
 import os
-import sys
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from langchain_core.tools import tool
 
-# These are set once at startup via init_tools() before the agent runs.
-_persist_directory: str = ""
-_all_chunks: list = []
-_graph_path: str = ""
-_graph = None
+def build_tools(persist_directory: str, all_chunks: list, graph=None):
+    """
+    Factory function that returns a list of configured tools.
+    These tools are closures over the specific repo's runtime state,
+    eliminating global variables and preventing race conditions during concurrent API requests.
+    """
 
-def init_tools(persist_directory: str, all_chunks: list, graph_path: str = ""):
-    """Call this once at startup to configure the tools with runtime state."""
-    global _persist_directory, _all_chunks, _graph_path, _graph
-    _persist_directory = persist_directory
-    _all_chunks = all_chunks
-    _graph_path = graph_path
-    
-    if _graph_path and os.path.exists(_graph_path):
-        from code_graph.graph_store import load_graph
-        _graph = load_graph(_graph_path)
-
-
-@tool
-def code_search_tool(query: str) -> str:
-    """Search the ingested code repository for chunks relevant to the query.
-    Use this tool for questions about code, functions, classes, methods,
-    configuration, or documentation found in the repository."""
-    from retrieval.pipeline import run_pipeline
-    
-    if not _persist_directory or not _all_chunks:
-        return "Error: tools not initialized. Call init_tools() first."
-    
-    docs = run_pipeline(
-        query=query,
-        persist_directory=_persist_directory,
-        all_chunks=_all_chunks,
-        dense_k=15,
-        sparse_k=15,
-        rerank_top_n=5
-    )
-    
-    if not docs:
-        return "No relevant code chunks found for that query."
-    
-    parts = []
-    for doc in docs:
-        file = doc.metadata.get('file', 'unknown')
-        section = doc.metadata.get('section', '')
-        label = f"[{file}]" + (f" (section: {section})" if section else "")
-        parts.append(f"{label}\n{doc.page_content}")
+    @tool
+    def code_search_tool(query: str) -> str:
+        """Search the ingested repository for code, functions, classes, and documentation.
+        Use this tool when you need to read the actual code or find where something is defined.
+        IMPORTANT: Use specific, targeted queries for best results — use class names (e.g. 'Task'),
+        method names (e.g. 'createTask'), or Java/Spring annotations (e.g. '@Entity', '@RestController',
+        '@GetMapping'). Vague phrases like 'find the models' or 'search for models' produce poor
+        results. If unsure of the exact name, try the most likely class or annotation name."""
         
-    return "\n\n---\n\n".join(parts)
-
-
-@tool
-def github_search_tool(query: str) -> str:
-    """Search GitHub issues, pull requests, and commit history for information
-    related to the query. Use this for questions about why a change was made,
-    bug reports, feature discussions, or contributor history."""
-    return "GitHub search is not yet implemented."
-
-
-@tool
-def graph_search_tool(query: str) -> str:
-    """Search the code relationship graph to find callers, callees, dependencies,
-    and structural relationships between code elements. Use this for questions
-    like 'what calls X', 'what does Y depend on', or 'what imports Z'.
-    NOTE: Provide the actual function name 'X' you want to lookup in the query."""
-    
-    if not _graph:
-        return "Error: graph not initialized or not found."
+        # We must import run_pipeline here to avoid circular imports, 
+        # or we just assume run_pipeline is available.
+        # Actually, let's import it here.
+        from retrieval.pipeline import run_pipeline
         
-    from code_graph.graph_store import get_callers, get_callees
-    
-    # Extract likely function name from query (simple heuristic)
-    # E.g. "what calls build_and_check_dists" -> "build_and_check_dists"
-    words = query.replace("'", "").replace('"', "").replace("`", "").split()
-    # Assume the longest word without spaces is the function name (rough heuristic)
-    target = sorted(words, key=len, reverse=True)[0]
-    
-    callers = get_callers(_graph, target)
-    callees = get_callees(_graph, target)
-    
-    result = []
-    if callers:
-        result.append(f"Found {len(callers)} caller(s) for '{target}':\n" + "\n".join(f"- {c}" for c in callers))
-    if callees:
-        result.append(f"Found {len(callees)} callee(s) that '{target}' calls:\n" + "\n".join(f"- {c}" for c in callees))
+        # We need the vectorstore/chunks to run the pipeline.
+        if not persist_directory or not all_chunks:
+            return "Error: Tools not properly initialized with vector database context."
+            
+        try:
+            results = run_pipeline(query, persist_directory, all_chunks)
+            if not results:
+                return "No relevant code found for your query."
+                
+            formatted = []
+            for doc in results:
+                file_path = doc.metadata.get("file", "Unknown file")
+                start_line = doc.metadata.get("start_line", "")
+                
+                header = f"[{file_path}]"
+                if start_line:
+                    header += f" (Line {start_line})"
+                    
+                formatted.append(f"{header}\n{doc.page_content}")
+                
+            return "\n\n---\n\n".join(formatted)
+        except Exception as e:
+            return f"Error executing code search: {str(e)}"
+
+    @tool
+    def github_search_tool(query: str) -> str:
+        """Search GitHub issues, pull requests, and commit history for context on why 
+        changes were made, historical bugs, and feature discussions."""
+        return "GitHub search is not yet implemented."
+
+    @tool
+    def graph_search_tool(query: str) -> str:
+        """Search the code relationship graph to find callers, callees, dependencies,
+        and structural relationships between code elements. Use this for questions
+        like 'what calls X', 'what does Y depend on', or 'what imports Z'.
+        NOTE: Provide the actual function name 'X' you want to lookup in the query."""
         
-    if not result:
-        return f"No structural relationships or callers found for '{target}'."
+        if not graph:
+            return "Error: graph not initialized or not found."
+            
+        from code_graph.graph_store import get_callers, get_callees
         
-    return "\n\n".join(result)
+        # Extract likely function name from query (simple heuristic)
+        words = query.replace("'", "").replace('"', "").replace("`", "").split()
+        target = sorted(words, key=len, reverse=True)[0]
+        
+        callers = get_callers(graph, target)
+        callees = get_callees(graph, target)
+        
+        result = []
+        if callers:
+            result.append(f"Found {len(callers)} caller(s) for '{target}':\n" + "\n".join(f"- {c}" for c in callers))
+        if callees:
+            result.append(f"Found {len(callees)} callee(s) that '{target}' calls:\n" + "\n".join(f"- {c}" for c in callees))
+            
+        if not result:
+            return f"No structural relationships or callers found for '{target}'."
+            
+        return "\n\n".join(result)
+        
+    return [code_search_tool, github_search_tool, graph_search_tool]

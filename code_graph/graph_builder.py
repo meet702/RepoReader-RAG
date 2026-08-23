@@ -2,7 +2,7 @@ import os
 import ast
 import javalang
 import networkx as nx
-from language_detector import detect_language
+from Ingestion.language_detector import detect_language
 
 def _get_call_name(node: ast.Call) -> str:
     """Extract the base function or method name from an ast.Call node."""

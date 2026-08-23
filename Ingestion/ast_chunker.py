@@ -3,7 +3,7 @@ import os
 import javalang
 
 from langchain_core.documents import Document
-from language_detector import detect_language
+from Ingestion.language_detector import detect_language
 
 
 class ASTChunker:
@@ -86,8 +86,9 @@ class ASTChunker:
 
         # Process top-level functions
         for node in visitor.functions:
-            start_line = node.lineno
-            end_line = getattr(node, "end_lineno", start_line)
+            decor_start = min([d.lineno for d in node.decorator_list]) if node.decorator_list else node.lineno
+            start_line = min(node.lineno, decor_start)
+            end_line = getattr(node, "end_lineno", node.lineno)
             code = "\n".join(lines[start_line - 1:end_line])
 
             chunks.append(
@@ -123,7 +124,13 @@ class ASTChunker:
                     bases.append(b.attr)
             
             base_str = f"({', '.join(bases)})" if bases else ""
-            summary_lines = [f"class {node.name}{base_str}:"]
+            
+            decor_lines = []
+            if node.decorator_list:
+                decor_start = min([d.lineno for d in node.decorator_list])
+                decor_lines = lines[decor_start - 1 : node.lineno - 1]
+                
+            summary_lines = decor_lines + [f"class {node.name}{base_str}:"]
 
             docstring = ast.get_docstring(node)
             if docstring:
@@ -152,8 +159,9 @@ class ASTChunker:
 
         # Process methods
         for class_name, node in visitor.methods:
-            start_line = node.lineno
-            end_line = getattr(node, "end_lineno", start_line)
+            decor_start = min([d.lineno for d in node.decorator_list]) if node.decorator_list else node.lineno
+            start_line = min(node.lineno, decor_start)
+            end_line = getattr(node, "end_lineno", node.lineno)
             code = "\n".join(lines[start_line - 1:end_line])
 
             chunks.append(
@@ -226,7 +234,10 @@ class ASTChunker:
                 if m.position and self._belongs_to(m, node, lines)
             ]
 
-            summary_lines = [f"{'class' if chunk_type == 'class' else 'interface'} {node.name} {{"]
+            # Collect any annotations immediately preceding the class declaration
+            annotation_lines = self._get_java_annotations(lines, start_line - 1)
+
+            summary_lines = annotation_lines + [f"{'class' if chunk_type == 'class' else 'interface'} {node.name} {{"]
             summary_lines.extend(f"    {f}" for f in field_lines)
             if constructor_signatures:
                 summary_lines.append(f"    // Constructor: {', '.join(constructor_signatures)}")
@@ -252,10 +263,11 @@ class ASTChunker:
         # ---------------------------------------------------------
         for path, node in constructor_nodes:
             start_line = node.position.line if node.position else 1
+            annotation_lines = self._get_java_annotations(lines, start_line - 1)
             code = self._extract_java_block(lines, start_line - 1)
             chunks.append(
                 Document(
-                    page_content=code,
+                    page_content="\n".join(annotation_lines) + ("\n" if annotation_lines else "") + code,
                     metadata={
                         "file": relative_path,
                         "language": "java",
@@ -271,10 +283,11 @@ class ASTChunker:
         # ---------------------------------------------------------
         for path, node in method_nodes:
             start_line = node.position.line if node.position else 1
+            annotation_lines = self._get_java_annotations(lines, start_line - 1)
             code = self._extract_java_block(lines, start_line - 1)
             chunks.append(
                 Document(
-                    page_content=code,
+                    page_content="\n".join(annotation_lines) + ("\n" if annotation_lines else "") + code,
                     metadata={
                         "file": relative_path,
                         "language": "java",
@@ -295,6 +308,32 @@ class ASTChunker:
         class_block = self._extract_java_block(lines, class_start)
         class_end = class_start + len(class_block.splitlines())
         return class_start <= member_node.position.line - 1 < class_end
+
+    def _get_java_annotations(self, lines, node_line_index):
+        """Scan backwards from node_line_index and collect any contiguous annotation
+        lines (lines starting with '@') immediately above the declaration.
+        Handles multi-line annotations like @Table(name = "todo") that span
+        multiple lines when parentheses are open.
+        Returns the collected annotation lines in top-to-bottom order.
+        """
+        collected = []
+        i = node_line_index - 1
+        open_parens = 0
+
+        while i >= 0:
+            line = lines[i].strip()
+
+            # Track parentheses for multi-line annotations (scan right-to-left)
+            open_parens += line.count(")") - line.count("(")
+
+            if line.startswith("@") or open_parens > 0:
+                collected.append(lines[i].rstrip())
+                i -= 1
+            else:
+                break
+
+        collected.reverse()
+        return collected
 
     # ---------------------------------------------------------
     # Text / Markdown / Config
@@ -355,7 +394,8 @@ class ASTChunker:
         ).replace("\\", "/")
         extension = os.path.splitext(file_path)[1].lower()
 
-        # Config files: return as whole file
+        # Config files: return as whole file with distinct chunk_type="config"
+        # so they can be excluded from code-specific reranking.
         if extension in ['.json', '.xml', '.yaml', '.yml']:
             return [
                 Document(
@@ -363,7 +403,7 @@ class ASTChunker:
                     metadata={
                         "file": relative_path,
                         "language": "text",
-                        "chunk_type": "document"
+                        "chunk_type": "config"
                     }
                 )
             ]

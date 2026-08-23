@@ -5,12 +5,12 @@ from collections import Counter
 from dotenv import load_dotenv
 load_dotenv()
 
-from github_loader import clone_repo
-from file_filter import get_parseable_files
+from Ingestion.github_loader import clone_repo
+from Ingestion.file_filter import get_parseable_files
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from ast_chunker import ASTChunker
+from Ingestion.ast_chunker import ASTChunker
 from code_graph.graph_builder import build_graph
 from code_graph.graph_store import save_graph
 
@@ -33,8 +33,7 @@ def main(repo_url: str):
     print(f"Found {len(files)} files to parse.")
     
     if not files:
-        print("No parseable files found. Exiting.")
-        return
+        raise ValueError("No parseable files found in the repository.")
         
     # 4. Chunk files
     print("\n--- 3. Chunking Files ---")
@@ -63,8 +62,7 @@ def main(repo_url: str):
         print(f"  - {c_type}: {count}")
         
     if not all_chunks:
-        print("No chunks created. Exiting.")
-        return
+        raise ValueError("No chunks created from the repository.")
         
     # 6. Generate embeddings and store in ChromaDB
     print("\n--- 5. Creating Vector Store ---")
@@ -117,6 +115,13 @@ def main(repo_url: str):
     print(f"Graph saved to {graph_path}")
         
     print("\n=== Ingestion Complete ===")
+    return {
+        "repo_name": repo_name,
+        "status": "success",
+        "chunks_created": count,
+        "graph_nodes": graph.number_of_nodes(),
+        "graph_edges": graph.number_of_edges()
+    }
 
 
 if __name__ == "__main__":
