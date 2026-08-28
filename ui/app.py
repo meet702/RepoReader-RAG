@@ -4,7 +4,7 @@ import uuid
 
 API_URL = "http://localhost:8000"
 
-st.set_page_config(page_title="AI Software Engineering Agent", layout="wide")
+st.set_page_config(page_title="RepoReader", layout="wide")
 
 # Initialize session state variables
 if "session_id" not in st.session_state:
@@ -61,7 +61,7 @@ with st.sidebar:
         st.rerun()
 
 # Main Chat Interface
-st.title("AI Software Engineering Agent")
+st.title("RepoReader")
 
 if not selected_repo:
     st.warning("Please select or ingest a repository to start chatting.")

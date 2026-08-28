@@ -1,7 +1,7 @@
 import os
 from langchain_core.tools import tool
 
-def build_tools(persist_directory: str, all_chunks: list, graph=None):
+def build_tools(persist_directory: str, all_chunks: list, graph=None, repo_path: str = ""):
     """
     Factory function that returns a list of configured tools.
     These tools are closures over the specific repo's runtime state,
@@ -82,4 +82,75 @@ def build_tools(persist_directory: str, all_chunks: list, graph=None):
             
         return "\n\n".join(result)
         
-    return [code_search_tool, github_search_tool, graph_search_tool]
+    @tool
+    def list_directory_tool(path: str = "") -> str:
+        """List the files and folders in the repository. Use this tool for questions like:
+        'what files exist in this project', 'show me the project structure',
+        'what's in the src directory', 'what controller files are present',
+        'give me the file structure'. This tool does a real filesystem walk — it is
+        deterministic and always shows the actual files on disk.
+        Do NOT use code_search_tool for these questions — it retrieves by meaning,
+        not by listing files.
+
+        IMPORTANT: If you do not know the exact folder layout, ALWAYS call this tool
+        first with path='' (empty string / no argument) to see the real top-level
+        structure. Only after seeing the real folder names should you call again with
+        a specific subpath (e.g. 'src/main/java'). Never guess or invent a path —
+        always derive it from a previous tool response.
+
+        If the output contains '... (max depth reached)' for a directory you care
+        about, call this tool again with that directory's exact path to see its
+        contents. Never guess or fabricate filenames — always use a follow-up call."""
+
+        if not repo_path:
+            return "Error: repo_path not configured. The server may need to be restarted after re-ingesting."
+
+        # Resolve the target directory
+        target = os.path.join(repo_path, path) if path else repo_path
+        target = os.path.normpath(target)
+
+        # Security: make sure we are still inside repo_path
+        if not target.startswith(os.path.normpath(repo_path)):
+            return "Error: path escapes the repository root."
+
+        if not os.path.isdir(target):
+            return f"Error: '{path}' is not a directory inside the repository."
+
+        EXCLUDED_DIRS = {
+            ".git", "node_modules", "venv", ".venv", "__pycache__",
+            "dist", "build", "target", ".idea", ".vscode"
+        }
+        MAX_DEPTH = 20
+
+        lines = [f"Repository: {os.path.basename(repo_path)}"]
+        if path:
+            lines[0] += f" / {path}"
+        lines.append("")
+
+        def _walk(directory: str, prefix: str, depth: int):
+            if depth > MAX_DEPTH:
+                lines.append(prefix + "... (max depth reached)")
+                return
+            try:
+                entries = sorted(os.listdir(directory))
+            except PermissionError:
+                lines.append(prefix + "[permission denied]")
+                return
+
+            # Separate dirs and files, skip excluded dirs
+            dirs = [e for e in entries if os.path.isdir(os.path.join(directory, e)) and e not in EXCLUDED_DIRS]
+            files = [e for e in entries if os.path.isfile(os.path.join(directory, e))]
+
+            for i, d in enumerate(dirs):
+                connector = "+-- " if (i < len(dirs) - 1 or files) else "+-- "
+                lines.append(prefix + connector + d + "/")
+                _walk(os.path.join(directory, d), prefix + "|   ", depth + 1)
+
+            for i, f in enumerate(files):
+                connector = "+-- " if i < len(files) - 1 else "\\-- "
+                lines.append(prefix + connector + f)
+
+        _walk(target, "", 1)
+        return "\n".join(lines)
+
+    return [code_search_tool, github_search_tool, graph_search_tool, list_directory_tool]

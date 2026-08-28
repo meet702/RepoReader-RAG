@@ -1,5 +1,9 @@
 import os
 import sys
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from typing import Dict, List, Any
@@ -17,6 +21,20 @@ from langchain_core.messages import HumanMessage, AIMessage
 from retrieval.query_rewriter import rewrite_query
 
 app = FastAPI(title="AI Software Engineering Agent API")
+
+@app.on_event("startup")
+def confirm_langsmith_env():
+    tracing = os.getenv("LANGSMITH_TRACING")
+    project = os.getenv("LANGSMITH_PROJECT")
+    api_key_present = bool(os.getenv("LANGSMITH_API_KEY"))
+    print(
+        "LangSmith env check: "
+        f"LANGSMITH_TRACING={'set' if tracing else 'missing'}"
+        f"{f' ({tracing})' if tracing else ''}; "
+        f"LANGSMITH_PROJECT={'set' if project else 'missing'}"
+        f"{f' ({project})' if project else ''}; "
+        f"LANGSMITH_API_KEY={'set' if api_key_present else 'missing'}"
+    )
 
 class IngestRequest(BaseModel):
     repo_url: str
@@ -36,6 +54,7 @@ def get_repo_state(repo_name: str) -> dict:
         
     persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'chroma_db', repo_name))
     graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph', f"{repo_name}.pkl"))
+    cloned_repo_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'cloned_repos', repo_name))
     
     if not os.path.exists(persist_dir):
         raise HTTPException(status_code=404, detail=f"Repository {repo_name} not found. Please ingest first.")
@@ -62,7 +81,8 @@ def get_repo_state(repo_name: str) -> dict:
     _repo_cache[repo_name] = {
         "persist_dir": persist_dir,
         "all_chunks": all_chunks,
-        "graph": graph
+        "graph": graph,
+        "repo_path": cloned_repo_path if os.path.isdir(cloned_repo_path) else ""
     }
     
     return _repo_cache[repo_name]
@@ -103,7 +123,7 @@ def chat(req: ChatRequest):
         state = get_repo_state(req.repo_name)
         
         # Build fresh tools closures for this request
-        tools = build_tools(state["persist_dir"], state["all_chunks"], state["graph"])
+        tools = build_tools(state["persist_dir"], state["all_chunks"], state["graph"], state.get("repo_path", ""))
         
         # Build fresh agent
         agent = build_agent(tools)
