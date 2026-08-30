@@ -9,13 +9,13 @@ from retrieval.sparse_retriever import get_sparse_results
 from retrieval.rrf import reciprocal_rank_fusion
 from sentence_transformers import CrossEncoder
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings
 from langchain_core.documents import Document
 
 repo_name = "To-Do-list"
 persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'chroma_db', repo_name))
 
-embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+embedding_model = get_embeddings()
 vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embedding_model)
 collection_data = vectorstore.get()
 all_chunks = [

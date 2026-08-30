@@ -16,8 +16,8 @@ from agent.tools import build_tools
 from agent.graph import build_agent
 from code_graph.graph_store import load_graph
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
 from langchain_core.messages import HumanMessage, AIMessage
+from llm.provider import get_embeddings, message_content_to_text
 from retrieval.query_rewriter import rewrite_query
 
 app = FastAPI(title="AI Software Engineering Agent API")
@@ -27,6 +27,9 @@ def confirm_langsmith_env():
     tracing = os.getenv("LANGSMITH_TRACING")
     project = os.getenv("LANGSMITH_PROJECT")
     api_key_present = bool(os.getenv("LANGSMITH_API_KEY"))
+    llm_provider = os.getenv("LLM_PROVIDER", "ollama")
+    embedding_provider = os.getenv("EMBEDDING_PROVIDER", "ollama")
+    gemini_api_key_present = bool(os.getenv("GEMINI_API_KEY"))
     print(
         "LangSmith env check: "
         f"LANGSMITH_TRACING={'set' if tracing else 'missing'}"
@@ -34,6 +37,12 @@ def confirm_langsmith_env():
         f"LANGSMITH_PROJECT={'set' if project else 'missing'}"
         f"{f' ({project})' if project else ''}; "
         f"LANGSMITH_API_KEY={'set' if api_key_present else 'missing'}"
+    )
+    print(
+        "Provider env check: "
+        f"LLM_PROVIDER={llm_provider}; "
+        f"EMBEDDING_PROVIDER={embedding_provider}; "
+        f"GEMINI_API_KEY={'set' if gemini_api_key_present else 'missing'}"
     )
 
 class IngestRequest(BaseModel):
@@ -60,7 +69,7 @@ def get_repo_state(repo_name: str) -> dict:
         raise HTTPException(status_code=404, detail=f"Repository {repo_name} not found. Please ingest first.")
         
     # Load Vectorstore and Chunks
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_dir,
         embedding_function=embedding_model
@@ -142,7 +151,7 @@ def chat(req: ChatRequest):
         result = agent.invoke({"messages": messages})
         
         # Extract answer and tool used
-        final_answer = result["messages"][-1].content
+        final_answer = message_content_to_text(result["messages"][-1].content)
         
         tool_used = "None"
         for msg in reversed(result["messages"]):

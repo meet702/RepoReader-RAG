@@ -4,9 +4,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
+from llm.provider import get_embeddings, message_content_to_text
 
 from agent.graph import build_agent
 
@@ -19,7 +19,7 @@ def start_chat():
         return
 
     print("Loading vector database and chunks...")
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model,
@@ -77,8 +77,9 @@ def start_chat():
             if msg_type == "ToolMessage":
                 print(f"\n[Tool: {last_msg.name}]")
                 # Show a preview of the tool output (first 300 chars)
-                preview = last_msg.content[:300].replace('\n', ' ')
-                if len(last_msg.content) > 300:
+                content = message_content_to_text(last_msg.content)
+                preview = content[:300].replace('\n', ' ')
+                if len(content) > 300:
                     preview += "..."
                 print(f"  Result preview: {preview}")
 
@@ -90,8 +91,9 @@ def start_chat():
 
             # Final AIMessage with no tool calls = the answer
             elif msg_type == "AIMessage" and (not hasattr(last_msg, 'tool_calls') or not last_msg.tool_calls):
-                if last_msg.content:
-                    print(f"\n--- Answer ---\n{last_msg.content}")
+                content = message_content_to_text(last_msg.content)
+                if content:
+                    print(f"\n--- Answer ---\n{content}")
 
         # Store the ORIGINAL question (not any rewritten version) in history
         final_messages = agent.get_state({"messages": messages}).values.get("messages", [])
@@ -99,7 +101,7 @@ def start_chat():
         final_answer = ""
         for msg in reversed(final_messages):
             if msg.__class__.__name__ == "AIMessage" and msg.content and not (hasattr(msg, 'tool_calls') and msg.tool_calls):
-                final_answer = msg.content
+                final_answer = message_content_to_text(msg.content)
                 break
 
         chat_history.append(HumanMessage(content=question))

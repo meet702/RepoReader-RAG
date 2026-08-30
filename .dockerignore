@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.git/
+.env
+.env.production
+ragenv/
+db/
+cloned_repos/
+.agents/
+.codex/

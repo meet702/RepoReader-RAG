@@ -1,9 +1,9 @@
 import os
 from langchain_community.document_loaders import TextLoader, DirectoryLoader
 from langchain_text_splitters import CharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 from dotenv import load_dotenv
+from llm.provider import get_embeddings
 
 load_dotenv()
 
@@ -66,13 +66,11 @@ def split_documents(documents, chunk_size=1000, chunk_overlap=0):
     return chunks
 
 def create_vector_store(chunks, persist_directory="db/chroma_db"):
-    """Create and persist ChromaDB vector store using Ollama embeddings"""
+    """Create and persist ChromaDB vector store."""
 
-    print("Creating embeddings using Ollama and storing in ChromaDB...")
+    print("Creating embeddings and storing in ChromaDB...")
 
-    embedding_model = OllamaEmbeddings(
-        model="nomic-embed-text"
-    )
+    embedding_model = get_embeddings()
 
     batch_size = 20
 

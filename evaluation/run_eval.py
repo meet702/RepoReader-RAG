@@ -10,7 +10,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 from langchain_chroma import Chroma
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings, message_content_to_text
 
 from agent.graph import build_agent
 from agent.tools import build_tools
@@ -33,7 +33,7 @@ def load_repo(repo_name: str) -> tuple[str, list[Document], object | None]:
     if not os.path.exists(persist_directory):
         raise FileNotFoundError(f"No ChromaDB found at {persist_directory}")
 
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model,
@@ -70,12 +70,12 @@ def run_agent(repo_name: str, question: str) -> dict:
         msg_type = last_msg.__class__.__name__
 
         if msg_type == "ToolMessage":
-            tool_outputs.append(str(last_msg.content))
+            tool_outputs.append(message_content_to_text(last_msg.content))
         elif msg_type == "AIMessage" and getattr(last_msg, "tool_calls", None):
             for tool_call in last_msg.tool_calls:
                 tool_names.append(tool_call["name"])
         elif msg_type == "AIMessage" and last_msg.content:
-            final_answer = last_msg.content
+            final_answer = message_content_to_text(last_msg.content)
 
     return {
         "tool_names": tool_names,

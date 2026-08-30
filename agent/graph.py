@@ -1,34 +1,5 @@
-import json
-from langchain_ollama import ChatOllama
-from langchain_core.messages import SystemMessage, AIMessage
-from langchain_core.outputs import ChatResult
 from langgraph.prebuilt import create_react_agent
-
-class QwenToolChatOllama(ChatOllama):
-    def _generate(self, messages, stop, run_manager, **kwargs) -> ChatResult:
-        import re
-        result = super()._generate(messages, stop, run_manager, **kwargs)
-        for gen in result.generations:
-            msg = gen.message
-            if isinstance(msg, AIMessage) and isinstance(msg.content, str):
-                content = msg.content.strip()
-                # Use regex to find a tool call JSON block anywhere in the text
-                match = re.search(r'\{[^{}]*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{.*?\}\s*\}', content, re.DOTALL)
-                if match:
-                    json_str = match.group(0)
-                    try:
-                        tool_data = json.loads(json_str)
-                        if "name" in tool_data and "arguments" in tool_data:
-                            # Manually construct tool_calls
-                            msg.content = ""
-                            msg.tool_calls = [{
-                                "name": tool_data["name"],
-                                "args": tool_data["arguments"],
-                                "id": "call_" + tool_data["name"]
-                            }]
-                    except Exception:
-                        pass
-        return result
+from llm.provider import get_llm
 
 SYSTEM_PROMPT = """You are a helpful software engineering assistant with access to three tools:
 - code_search_tool: searches the ingested repository for code, functions, classes, and documentation.
@@ -44,6 +15,6 @@ IMPORTANT RULES:
 
 def build_agent(tools):
     """Build and return a LangGraph ReAct agent with the provided tools."""
-    llm = QwenToolChatOllama(model="qwen2.5-coder:7b")
+    llm = get_llm()
     agent = create_react_agent(llm, tools, prompt=SYSTEM_PROMPT)
     return agent

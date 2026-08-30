@@ -3,7 +3,7 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from langchain_ollama import ChatOllama
+from llm.provider import get_llm
 from langchain_core.messages import SystemMessage, HumanMessage
 from langchain_core.tools import tool
 from agent.graph import SYSTEM_PROMPT
@@ -23,7 +23,7 @@ def graph_search_tool(entity: str) -> str:
     """Searches the code graph."""
     return "Dummy result"
 
-llm = ChatOllama(model="qwen2.5-coder:7b").bind_tools([code_search_tool, github_search_tool, graph_search_tool])
+llm = get_llm().bind_tools([code_search_tool, github_search_tool, graph_search_tool])
 
 messages = [
     SystemMessage(content=SYSTEM_PROMPT),

@@ -8,6 +8,7 @@ from langchain_core.messages import HumanMessage, AIMessage
 from api.main import get_repo_state
 from agent.tools import build_tools
 from agent.graph import build_agent
+from llm.provider import message_content_to_text
 from retrieval.query_rewriter import rewrite_query
 
 repo_name = "To-Do-list"
@@ -34,10 +35,10 @@ def run_turn(turn_idx, question):
         if isinstance(msg, AIMessage) and getattr(msg, 'tool_calls', None):
             print("Tool calls:", msg.tool_calls)
         elif getattr(msg, 'content', None):
-            print(msg.content)
+            print(message_content_to_text(msg.content))
         
         if isinstance(msg, AIMessage) and not getattr(msg, 'tool_calls', None):
-            final_answer = msg.content
+            final_answer = message_content_to_text(msg.content)
             
     history.append(HumanMessage(content=question))
     history.append(AIMessage(content=final_answer))

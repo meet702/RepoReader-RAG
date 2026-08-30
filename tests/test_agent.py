@@ -8,7 +8,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings, message_content_to_text
 from langchain_core.messages import HumanMessage, AIMessage
 from langchain_core.documents import Document
 
@@ -19,7 +19,7 @@ def setup():
     persist_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'chroma_db', repo_name))
 
     print("Loading vector database and chunks...")
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model,
@@ -61,13 +61,14 @@ def run_question(agent, question):
 
         elif msg_type == "ToolMessage":
             print(f"\n[Tool result from: {last_msg.name}]")
-            preview = last_msg.content[:300].replace('\n', ' ')
-            if len(last_msg.content) > 300:
+            content = message_content_to_text(last_msg.content)
+            preview = content[:300].replace('\n', ' ')
+            if len(content) > 300:
                 preview += "..."
             print(f"  Preview: {preview}")
 
         elif msg_type == "AIMessage" and last_msg.content and not (hasattr(last_msg, 'tool_calls') and last_msg.tool_calls):
-            final_answer = last_msg.content
+            final_answer = message_content_to_text(last_msg.content)
             print(f"\n[Final Answer]\n{final_answer}")
 
     print()

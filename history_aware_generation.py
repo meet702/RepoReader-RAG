@@ -1,18 +1,18 @@
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
-from langchain_ollama import ChatOllama, OllamaEmbeddings
+from llm.provider import get_embeddings, get_llm, message_content_to_text
 
 # Load environment variables
 load_dotenv()
 
 # Connect to your document database
 persistent_directory = "db/chroma_db"
-embeddings = OllamaEmbeddings(model="nomic-embed-text")
+embeddings = get_embeddings()
 db = Chroma(persist_directory=persistent_directory, embedding_function=embeddings)
 
 # Set up AI model
-llm = ChatOllama(model="qwen2.5-coder:7b")
+llm = get_llm()
 
 # Store our conversation as messages
 chat_history = []
@@ -30,7 +30,7 @@ def ask_question(user_question):
         ]
         
         result = llm.invoke(messages)
-        search_question = result.content.strip()
+        search_question = message_content_to_text(result.content).strip()
         print(f"Searching for: {search_question}")
     else:
         search_question = user_question
@@ -63,7 +63,7 @@ def ask_question(user_question):
     ]
     
     result = llm.invoke(messages)
-    answer = result.content
+    answer = message_content_to_text(result.content)
     
     # Step 5: Remember this conversation
     chat_history.append(HumanMessage(content=user_question))

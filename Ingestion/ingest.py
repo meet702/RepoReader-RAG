@@ -13,8 +13,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Ingestion.ast_chunker import ASTChunker
 from code_graph.graph_builder import build_graph
 from code_graph.graph_store import save_graph
+from llm.provider import get_embeddings
 
-from langchain_ollama import OllamaEmbeddings
 from langchain_chroma import Chroma
 
 
@@ -74,8 +74,8 @@ def main(repo_url: str):
         import shutil
         shutil.rmtree(persist_directory, ignore_errors=True)
     
-    print(f"Initializing Ollama embeddings (nomic-embed-text)...")
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    print("Initializing embeddings...")
+    embedding_model = get_embeddings()
     
     batch_size = 20
     print(f"Storing chunks in {persist_directory} in batches of {batch_size}...")

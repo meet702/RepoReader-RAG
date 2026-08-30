@@ -9,7 +9,7 @@ from retrieval.sparse_retriever import get_sparse_results
 from retrieval.rrf import reciprocal_rank_fusion
 from retrieval.reranker import rerank
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings
 from langchain_core.documents import Document
 
 def test_retrieval():
@@ -21,7 +21,7 @@ def test_retrieval():
         return
         
     print(f"Loading chunks from ChromaDB at {persist_directory}...")
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model,

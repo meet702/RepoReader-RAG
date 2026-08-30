@@ -5,9 +5,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.documents import Document
+from llm.provider import get_embeddings, get_llm, message_content_to_text
 
 from retrieval.query_rewriter import rewrite_query
 from retrieval.pipeline import run_pipeline
@@ -21,7 +21,7 @@ def start_chat():
         return
 
     print("Loading vector database and chunks...")
-    embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+    embedding_model = get_embeddings()
     vectorstore = Chroma(
         persist_directory=persist_directory,
         embedding_function=embedding_model,
@@ -36,7 +36,7 @@ def start_chat():
         
     print(f"Loaded {len(all_chunks)} chunks successfully.")
     
-    llm = ChatOllama(model="qwen2.5-coder:7b")
+    llm = get_llm()
     chat_history = []
     
     print("\nAsk me questions about the codebase! Type 'quit' to exit.")
@@ -93,7 +93,7 @@ Please provide a clear, helpful answer using only the information from these doc
         
         print("\n--- Answer ---")
         result = llm.invoke(messages)
-        answer = result.content
+        answer = message_content_to_text(result.content)
         print(answer)
         
         # 4. Update history

@@ -4,7 +4,7 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from llm.provider import get_embeddings, get_llm, message_content_to_text
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 from langchain_core.documents import Document
 
@@ -15,7 +15,7 @@ repo_name = "sampleproject"
 persist_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'chroma_db', repo_name))
 
 print("Loading vector database and chunks...")
-embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+embedding_model = get_embeddings()
 vectorstore = Chroma(
     persist_directory=persist_directory,
     embedding_function=embedding_model,
@@ -29,7 +29,7 @@ for doc_content, metadata in zip(collection_data['documents'], collection_data['
 
 print(f"Loaded {len(all_chunks)} chunks.\n")
 
-llm = ChatOllama(model="qwen2.5-coder:7b")
+llm = get_llm()
 chat_history = []
 
 
@@ -80,7 +80,7 @@ Please provide a clear, helpful answer using only the information from these doc
     ]
 
     result = llm.invoke(messages)
-    answer = result.content
+    answer = message_content_to_text(result.content)
 
     print(f"\nAnswer: {answer}")
 
@@ -101,4 +101,5 @@ print("Final chat_history:")
 print("="*60)
 for i, msg in enumerate(chat_history):
     role = "Human" if isinstance(msg, HumanMessage) else "AI"
-    print(f"\n[{i+1}] {role}: {msg.content[:300]}{'...' if len(msg.content) > 300 else ''}")
+    content = message_content_to_text(msg.content)
+    print(f"\n[{i+1}] {role}: {content[:300]}{'...' if len(content) > 300 else ''}")

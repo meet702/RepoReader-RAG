@@ -3,14 +3,13 @@ import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage
 import langchain_core
 
 from agent.tools import code_search_tool, init_tools
 from agent.graph import build_agent
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings, get_llm
 from langchain_core.documents import Document
 
 # Setup basics
@@ -18,7 +17,7 @@ repo_name = "sampleproject"
 persist_directory = os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..', 'db', 'chroma_db', repo_name)
 )
-embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+embedding_model = get_embeddings()
 vectorstore = Chroma(
     persist_directory=persist_directory,
     embedding_function=embedding_model,
@@ -35,7 +34,7 @@ init_tools(persist_directory, all_chunks)
 print("=" * 60)
 print("TEST 1: RAW bind_tools DIRECTORY TEST (no LangGraph)")
 print("=" * 60)
-llm = ChatOllama(model="qwen2.5-coder:7b")
+llm = get_llm()
 llm_with_tools = llm.bind_tools([code_search_tool])
 
 msg = HumanMessage(content="show me the tests function in noxfile.py")

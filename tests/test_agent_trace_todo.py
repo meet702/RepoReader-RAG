@@ -5,7 +5,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'Ingestion')))
 
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
+from llm.provider import get_embeddings, message_content_to_text
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, AIMessage
 from code_graph.graph_store import load_graph
@@ -17,7 +17,7 @@ persist_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db'
 graph_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'db', 'code_graph', f"{repo_name}.pkl"))
 
 print(f"Loading chunks from {persist_dir}...")
-embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+embedding_model = get_embeddings()
 vectorstore = Chroma(persist_directory=persist_dir, embedding_function=embedding_model)
 collection_data = vectorstore.get()
 all_chunks = [
@@ -49,7 +49,7 @@ result = agent.invoke({"messages": [HumanMessage(content=question)]})
 print("\n--- FULL AGENT TRACE ---\n")
 for i, msg in enumerate(result["messages"]):
     msg_type = type(msg).__name__
-    content = msg.content if isinstance(msg.content, str) else str(msg.content)
+    content = message_content_to_text(msg.content)
     tool_calls = getattr(msg, 'tool_calls', None)
 
     print(f"[{i+1}] {msg_type}")

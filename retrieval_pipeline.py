@@ -1,15 +1,14 @@
 from langchain_chroma import Chroma
-from langchain_ollama import OllamaEmbeddings
-from langchain_ollama import ChatOllama
 from langchain_core.messages import HumanMessage, SystemMessage
 from dotenv import load_dotenv
+from llm.provider import get_embeddings, get_llm, message_content_to_text
 
 load_dotenv()
 
 persistent_directory = "db/chroma_db"
 
 # Load embeddings and vector store
-embedding_model = OllamaEmbeddings(model="nomic-embed-text")
+embedding_model = get_embeddings()
 
 db = Chroma(
     persist_directory=persistent_directory,
@@ -48,7 +47,7 @@ Documents:
 Please provide a clear, helpful answer using only the information from these documents. If you can't find the answer in the documents, say "I don't have enough information to answer that question based on the provided documents"
 """
 
-llm = ChatOllama(model="qwen2.5-coder:7b")
+llm = get_llm()
 
 messages = [
     SystemMessage(content="You are a helpful assistant"),
@@ -59,7 +58,7 @@ result = llm.invoke(messages)
 
 
 print("\nGenerated Response: ")
-print(result.content)
+print(message_content_to_text(result.content))
 
 # Synthetic Questions: 
 
