@@ -1,17 +1,27 @@
-# Codebase RAG Assistant
+# 🧠 Codebase RAG Assistant
 
-This project is a Retrieval-Augmented Generation (RAG) system specifically designed for chatting with and understanding codebases. It allows you to ingest source code repositories, store their embeddings in a ChromaDB vector database, and interact with the codebase using an advanced AI agent powered by LangChain and LangGraph.
+> An intelligent, Retrieval-Augmented Generation (RAG) platform to interactively chat with and understand your source code, powered by advanced LangGraph agents and ChromaDB vector search.
 
-## Features
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white) ![FastAPI](https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white) ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=streamlit&logoColor=white) ![ChromaDB](https://img.shields.io/badge/ChromaDB-FF6F00?style=for-the-badge) ![LangChain](https://img.shields.io/badge/LangChain-1C3C3C?style=for-the-badge) ![LangGraph](https://img.shields.io/badge/LangGraph-1C3C3C?style=for-the-badge) ![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white) ![License](https://img.shields.io/badge/License-MIT-lightgrey?style=for-the-badge)
 
-- **Code Ingestion:** Parses and chunks source code files to create embeddings.
-- **Vector Search:** Utilizes ChromaDB for efficient similarity search and BM25 for sparse/keyword search.
-- **Agentic Chat:** A LangGraph ReAct agent that can route queries, retrieve context, and provide detailed answers about the codebase.
-- **API Server:** A FastAPI application for exposing the RAG capabilities programmatically.
-- **User Interface:** A Streamlit-based web interface for easy interaction.
-- **Docker Support:** Ready-to-use Docker Compose configuration to spin up the API and UI services seamlessly.
+---
 
-## Project Structure
+## 📖 Overview
+
+The **Codebase RAG Assistant** is a production-ready application that allows developers to seamlessly ingest entire source code repositories and query them using natural language. The system leverages state-of-the-art vector embeddings with **ChromaDB** for accurate retrieval and an advanced **LangGraph ReAct agent** capable of multi-step reasoning, routing queries, and retrieving critical context.
+
+Whether you're onboarding onto a new project or debugging complex architecture, this tool brings the power of LLMs directly to your codebase.
+
+## ✨ Key Features
+
+- 📥 **Code Ingestion** — Parses, chunks, and embeds source code files efficiently.
+- 🔍 **Vector & Sparse Search** — Hybrid retrieval utilizing ChromaDB for semantic search and BM25 for precise keyword matching.
+- 🤖 **Agentic Chat** — LangGraph-powered ReAct agent that intelligently routes queries and retrieves exact context from the codebase.
+- 🔌 **API Server** — A robust FastAPI backend exposing RAG capabilities programmatically.
+- 🖥️ **Interactive User Interface** — A sleek Streamlit web app for intuitive interaction and visualizations.
+- 🐳 **Docker Support** — Turnkey Docker Compose setup to spin up API and UI services in seconds.
+
+## 📁 Project Structure
 
 - `agent/`: LangGraph agent definitions and tools.
 - `api/`: FastAPI server implementation.
@@ -25,14 +35,14 @@ This project is a Retrieval-Augmented Generation (RAG) system specifically desig
 - `chat.py`: Basic CLI script for chatting with the vector database.
 - `ingestion_pipeline.py` & `retrieval_pipeline.py`: Scripts to test ingestion and retrieval independently.
 
-## Getting Started
+## 🚀 Getting Started
 
-### Prerequisites
+### 🛠️ Prerequisites
 
 - Python 3.8+
 - Docker & Docker Compose (optional, for containerized deployment)
 
-### Setup
+### ⚙️ Setup
 
 1. **Clone the repository:**
    ```bash
@@ -54,7 +64,7 @@ This project is a Retrieval-Augmented Generation (RAG) system specifically desig
 4. **Environment Variables:**
    Create a `.env` file in the root directory (you can use `.env.production` as a reference) and add the necessary API keys for your LLM and embedding providers.
 
-### Usage
+### 🎮 Usage
 
 #### Ingestion
 Before querying, you need to ingest a codebase to build the vector database.
@@ -83,7 +93,7 @@ This will start:
 - **API:** http://localhost:8000
 - **UI (Streamlit):** http://localhost:8501
 
-## Technologies Used
+## 🛠️ Technologies Used
 
 - [LangChain](https://github.com/langchain-ai/langchain) & [LangGraph](https://langchain-ai.github.io/langgraph/)
 - [ChromaDB](https://www.trychroma.com/)
@@ -91,3 +101,7 @@ This will start:
 - [Streamlit](https://streamlit.io/)
 - [Sentence Transformers](https://www.sbert.net/) & BM25
 - Docker
+
+## 🛡️ License
+
+[MIT License](LICENSE)
